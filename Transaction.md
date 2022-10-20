@@ -48,7 +48,7 @@
     * 트랜잭션 동기화 저장소는 작업 스레드마다 Connection 객체를 독립적으로 관리하기 때문에 멀티스레드 환경에서 충돌이 발생할 여지가 없다
 
     * 코드 예시
-    ```java
+    ```Java
     // 동기화 시작
     TransactionSynchronizeManager.initSynchronization();
     Connnection c = DataSourceUtils.getConnection(dataSource);
