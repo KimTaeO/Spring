@@ -9,7 +9,7 @@
     * 추가로 Interceptor는 Dispatcher와 Controller 사이에 위치하는 점에서 Filter와는 적용 시기의 차이가 존재한다
 
 * Spring Security의 아키텍쳐는 아래와 같다
-![security architecture](../images/spring%20security%20architecture.png)
+![security architecture](../images/springSecurityArchitecture.png)
 
 * Spring Security는 Authentication 절차를 거친 후에 Authorization 절차를 진행하게 되며 Autorization 절차에서 해당 resource에 대한 접근 권한이 있는지 확인을 하게 된다 이러한 절차를 수행하기 위해서 Spring Security에서는 Principal을 아이디로 Credential을 비밀번호로 사용하는 ```Credential 기반의 Authentication 방식을 사용한다```
 
