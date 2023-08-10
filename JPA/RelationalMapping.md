@@ -216,4 +216,177 @@ class Librarian(
 )
 ```
 
-### N:M
+## N:M
+* 관계형 DB는 정규화된 테이블 2개로 N:M 관계를 표현할 수 없다. 따라서 중간에 연결 테이블을 추가해 N:M 관계를 1:N, N:1 관계로 풀어낼 수 있다
+* 하지만 객체는 테이블과 다르게 객체 2개로 N:M 관계를 풀어낼 수 있다
+
+### N:M 단방향
+* @ManyToMany와 @JoinTable을 통해 연결테이블을 관리하지 않고도 다대다 관계를 풀어낼 수 있다
+* 코틀린으로 N:M 양방향 구현 예시 코드
+```Kotlin
+@Entity
+class Library(
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "library_id")
+    var id: Long = 0,
+
+    val name: String,
+
+    @ManyToMany
+    @JoinTable(name = "LIBRARY_LIBRARIAN",
+    joinColumns = @JoinColumn(name = "LIBRARIAN_ID"), 
+    inverseJoinColumns = @JoinColumn(name = "LIBRARY_ID"))
+    val librarians: MutableList<Librarian> = mutableListOf()
+)
+
+@Entity
+class Librarian(
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "librarian_id", nullable = false)
+    var id: Long = 0,
+
+    @Column(nullable = false)
+    val name: String
+)
+```
+* joinColumns 파라미터는 현재 매핑하려는 엔티티의 JoinColumn 정보로 필요로 한다
+* inverseJoinColumns 파라미터는 현재 매핑하려는 엔티티의 반대 엔티티의 JoinColumn 정보를 필요로 한다
+
+### N:M 양방향
+* mappedBy를 통해 연관관계의 주인을 정해주는 것 말고는 단방향과 차이가 없다
+* 코틀린으로 N:M 양방향 구현 예시 코드
+```Kotlin
+@Entity
+class Library(
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "library_id")
+    var id: Long = 0,
+
+    val name: String,
+
+    @ManyToMany
+    @JoinTable(name = "LIBRARY_LIBRARIAN",
+    joinColumns = @JoinColumn(name = "LIBRARIAN_ID"), 
+    inverseJoinColumns = @JoinColumn(name = "LIBRARY_ID"))
+    val librarians: MutableList<Librarian> = mutablelistof()
+)
+
+@Entity
+class Librarian(
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "librarian_id", nullable = false)
+    var id: Long = 0,
+
+    @Column(nullable = false)
+    val name: String
+
+    @ManyToMany(mappedBy = "librarians")
+    val libraries: MutableList<Library> = mutablelistof()
+)
+```
+
+### 다대다 연관관계 매핑의 문제점
+* @ManyToMany 어노테이션을 사용하면 연결 테이블에 컬럼을 추가하거나 하는 등 테이블을 직접 관리할 수 없게된다
+> 따라서 연결 엔티티를 직접 추가해 1:N, N:1 연관관계를 매핑한 다음 N:M 처럼 사용하는 것이다
+```Kotlin
+@Entity
+class Library(
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "library_id")
+    var id: Long = 0,
+
+    val name: String,
+
+    @OneToMany(mappedBy = "library")
+    val librarians: MutableList<Librarian> = mutableListOf<Librarian>()
+)
+
+@Entity
+class Library_Librarian(
+    @Id
+    @ManyToOne
+    @JoinColumn(name = "LIBRARY_ID")
+    val library: Library,
+        
+    @Id 
+    @ManyToOne
+    @JoinColumn(name = "LIBRARIAN_ID")
+    val librarian: Librarian
+)
+
+@Entity
+class Librarian(
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "librarian_id", nullable = false)
+    var id: Long = 0,
+
+    @Column(nullable = false)
+    val name: String,
+    
+    @OneToMany(mappedBy = "librarian")
+    val libraries: MutableList<Library> = mutableListOf()
+)
+
+data class LibraryLibrarianId(
+    val library: String,
+    val librarian: String
+): Serializable
+```
+
+* 복합 기본키를 통해 두 테이블의 기본키를 연결 테이블의 기본키로 사용하였다 이를 식별 관계라고 한다
+    * 식별자 클래스를 만들어 @IdClass 어노테이션에 지정하였고 식별자 클래스는 Serializable을 구현해야 하며, equals와 hashCode 메소드를 구현해야 하고, 식별자 클래스는 public이어야 한다
+
+> 하지만 이러한 방식은 식별자 클래스를 만들고 equals와 hashCode를 구현하고, @IdClass 등을 사용해야 하는 번거로움을 가지고 있는데 이러한 복잡함을 해결하기 위해서는 새로운 기본 키를 사용하는 방법이 있다
+
+### N:M 새로운 기본 키 사용
+* 복합 키를 사용하지 않고 데이터베이스에서 자동으로 생성되는 키를 사용하여 간단히 매핑을 완성할 수 있다 이를 비식별 관계라고 한다
+* 코틀린으로 N:M 새로운 기본 키 사용 예시 코드
+```Kotlin
+@Entity
+class Library(
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "library_id")
+    var id: Long = 0,
+
+    val name: String,
+
+    @OneToMany(mappedBy = "library")
+    val librarians: MutableList<Librarian> = mutableListOf<Librarian>()
+)
+
+@Entity
+class Library_Librarian(
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    val id: Long = 0L,
+    
+    @ManyToOne
+    @JoinColumn(name = "LIBRARY_ID")
+    val library: Library,
+    
+    @ManyToOne
+    @JoinColumn(name = "LIBRARIAN_ID")
+    val librarian: Librarian
+)
+
+@Entity
+class Librarian(
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "librarian_id", nullable = false)
+    var id: Long = 0,
+
+    @Column(nullable = false)
+    val name: String,
+
+    @OneToMany(mappedBy = "librarian")
+    val libraries: MutableList<Library> = mutableListOf()
+)
+```
